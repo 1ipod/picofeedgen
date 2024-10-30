@@ -7,10 +7,18 @@ from firehose import FirehoseClient
 import logging
 import sqlite3
 import aiohttp
+import following_feed
 
 logging.basicConfig(level=logging.DEBUG)
 
-from config import BGS_HOST, FEED_HOSTNAME, FEED_DID, FEED_PUBLISHER_DID, FEEDS, LISTEN_HOST, LISTEN_PORT
+#from config import BGS_HOST, FEED_HOSTNAME, FEED_DID, FEED_PUBLISHER_DID, FEEDS, LISTEN_HOST, LISTEN_PORT
+LISTEN_PORT = 8080
+LISTEN_HOST = "127.0.0.1"
+BGS_HOST = "bsky.network"
+FEEDS = {
+	"BetterFollow":following_feed.FollowingFeed()
+}
+FEED_HOSTNAME = ""
 
 
 async def hello(request: web.Request):
@@ -34,7 +42,7 @@ async def get_feed_skeleton(request: web.Request):
 	# requester's identity for anything important. If you want to do something important with it
 	# (like making "private" or otherwise personalised feeds), you should change this.
 	# Proper verification would involve requesting the user's pubkey from a PLC directory
-	token = jwt.decode(request.headers["Authorization"].removeprefix("Bearer "), options={"verify_signature": False})
+	token = jwt.decode(request.headers["Authorization"].removeprefix("Bearer "), options={"verify_signature": True})
 	requester_did = token["iss"]
 
 	if "feed" not in request.query:
@@ -52,10 +60,6 @@ async def get_feed_skeleton(request: web.Request):
 	if feed_collection != "app.bsky.feed.generator":
 		return web.HTTPBadRequest(text="feed must reference a feed generator record")
 
-	# XXX: I think it would technically be valid for feed_did to be a handle here
-	if feed_did != FEED_PUBLISHER_DID:
-		return web.HTTPNotFound(text="we don't host any feeds from that publisher")
-	
 	limit = int(request.query.get("limit", 50))
 	cursor = request.query.get("cursor")
 
